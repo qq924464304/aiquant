@@ -211,4 +211,27 @@ export const api = {
       output?: string[];
     }>;
   },
+
+  /** 获取个人股票列表 */
+  getUserStocks: () => fetchJSON<StockInfo[]>("/user-stocks"),
+
+  /** 加入个人股票 */
+  addUserStock: async (code: string, name?: string) => {
+    const res = await fetch(`${BASE}/user-stocks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, name }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  },
+
+  /** 删除个人股票 */
+  removeUserStock: async (code: string) => {
+    const res = await fetch(`${BASE}/user-stocks/${code}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  },
 };

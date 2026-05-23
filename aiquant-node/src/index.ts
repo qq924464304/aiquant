@@ -138,6 +138,43 @@ router.get("/api/latest-prices", async (ctx) => {
   ctx.body = result;
 });
 
+// ── 用户股票管理 ──────────────────────────────────────
+router.get("/api/user-stocks", async (ctx) => {
+  const stocks = await prisma.userStock.findMany({
+    orderBy: { createdAt: "asc" },
+  });
+  ctx.body = stocks.map((s) => ({ code: s.code, name: s.name }));
+});
+
+router.post("/api/user-stocks", async (ctx) => {
+  const { code, name } = ctx.request.body as { code: string; name?: string };
+  if (!code || !/^\d{6}$/.test(code)) {
+    ctx.status = 400;
+    ctx.body = { error: "请输入有效的6位股票代码" };
+    return;
+  }
+  await prisma.userStock.upsert({
+    where: { code },
+    update: { name: name || null },
+    create: { code, name: name || null },
+  });
+  ctx.body = { success: true, code, name };
+});
+
+router.delete("/api/user-stocks/:code", async (ctx) => {
+  const { code } = ctx.params;
+  try {
+    await prisma.userStock.delete({ where: { code } });
+    ctx.body = { success: true, code };
+  } catch (e: any) {
+    if (e.code === "P2025") {
+      ctx.body = { success: true, code, note: "not found" };
+      return;
+    }
+    throw e;
+  }
+});
+
 // Dashboard 聚合接口（一次性返回所有数据）
 router.get("/api/dashboard", async (ctx) => {
   // 年份范围参数（默认5年）
@@ -150,11 +187,20 @@ router.get("/api/dashboard", async (ctx) => {
     orderBy: { recordedAt: "desc" },
   });
 
+  // 只显示用户个人股票列表中的
+  const userCodes = new Set(
+    (await prisma.userStock.findMany({ select: { code: true } })).map(
+      (s) => s.code,
+    ),
+  );
+
   const latestMap = new Map<string, (typeof priceRecords)[0]>();
   const priceMap = new Map<string, number[]>();
   const peMap = new Map<string, number[]>();
   const pbMap = new Map<string, number[]>();
   for (const r of priceRecords) {
+    // 跳过不在用户个人列表的股票
+    if (!userCodes.has(r.code)) continue;
     if (!latestMap.has(r.code)) latestMap.set(r.code, r);
     // 只在指定年份范围内计算百分位
     if (r.recordedAt >= cutoff) {
@@ -1056,6 +1102,12 @@ router.post("/api/import-stock", async (ctx) => {
     // 查数据库是否已有记录
     const count = await prisma.priceRecord.count({ where: { code } });
     if (count > 0) {
+      // 自动加入个人股票列表（如果尚未加入）
+      await prisma.userStock.upsert({
+        where: { code },
+        update: {},
+        create: { code, name: code },
+      });
       ctx.body = {
         exists: true,
         message: `股票 ${code} 已在数据库中（${count}条记录）`,
@@ -1081,6 +1133,13 @@ router.post("/api/import-stock", async (ctx) => {
     // 再次检查入库记录数
     const newCount = await prisma.priceRecord.count({ where: { code } });
 
+    // 自动加入个人股票列表
+    await prisma.userStock.upsert({
+      where: { code },
+      update: {},
+      create: { code, name: code },
+    });
+
     ctx.body = {
       exists: false,
       message: `股票 ${code} 导入成功，共 ${newCount} 条记录`,
@@ -1088,6 +1147,11 @@ router.post("/api/import-stock", async (ctx) => {
       output: output.split("\n").filter((l: string) => l.trim()),
     };
   } catch (e: any) {
+    console.error("[import] 错误:", e.message || e);
+    if (e.stderr)
+      console.error("[import] stderr:", (e.stderr as string).slice(0, 500));
+    if (e.stdout)
+      console.error("[import] stdout:", (e.stdout as string).slice(0, 200));
     ctx.status = 500;
     ctx.body = { error: `导入失败: ${e.message || e}` };
   }

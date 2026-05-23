@@ -11,7 +11,9 @@ import {
   Select,
   Progress,
   Input,
+  AutoComplete,
   message,
+  Popconfirm,
 } from "antd";
 import {
   LineChart,
@@ -26,7 +28,7 @@ import {
   Legend,
 } from "recharts";
 import { api } from "../services/api";
-import type { LatestPrice, FinancialRecord } from "../services/api";
+import type { LatestPrice, FinancialRecord, StockInfo } from "../services/api";
 
 function FinancialDrawer({ records }: { records: FinancialRecord[] }) {
   /**
@@ -534,25 +536,58 @@ export default function Dashboard() {
   // 导入股票相关状态
   const [importCode, setImportCode] = useState("");
   const [importing, setImporting] = useState(false);
+  const [allStocks, setAllStocks] = useState<StockInfo[]>([]); // 全量股票（搜索补全用）
+  const [userStocks, setUserStocks] = useState<StockInfo[]>([]); // 个人股票列表
+
+  const loadDashboard = async (yrs: number) => {
+    setLoading(true);
+    try {
+      const [dashData, uStocks] = await Promise.all([
+        api.getDashboard(yrs),
+        api.getUserStocks(),
+      ]);
+      setData(dashData.prices);
+      setFinRecordMap(dashData.financialRecords);
+      setUserStocks(uStocks);
+    } catch (e) {
+      console.error("加载失败", e);
+    }
+    setLoading(false);
+  };
+
+  // 加载全量股票列表（搜索补全用）
+  useEffect(() => {
+    api
+      .getStocks()
+      .then(setAllStocks)
+      .catch(() => {});
+  }, []);
+
+  // 搜索补全选项
+  const autoCompleteOptions = useMemo(() => {
+    const q = importCode.trim().toLowerCase();
+    if (!q || q.length < 1) return [];
+    return allStocks
+      .filter((s) => s.code.startsWith(q) || (s.name && s.name.includes(q)))
+      .slice(0, 20)
+      .map((s) => ({
+        value: s.code,
+        label: `${s.code} ${s.name || ""}`,
+      }));
+  }, [importCode, allStocks]);
 
   const handleImport = async () => {
-    const code = importCode.trim();
-    if (!/^\d{6}$/.test(code)) {
+    const targetCode = importCode.trim();
+    if (!/^\d{6}$/.test(targetCode)) {
       message.warning("请输入6位股票代码");
       return;
     }
     setImporting(true);
     try {
-      const res = await api.importStock(code);
-      if (res.exists) {
-        message.info(res.message);
-      } else {
-        message.success(res.message);
-        // 刷新数据
-        const newData = await api.getDashboard(years);
-        setData(newData.prices);
-        setFinRecordMap(newData.financialRecords);
-      }
+      const res = await api.importStock(targetCode);
+      message.success(res.message);
+      // 刷新数据
+      await loadDashboard(years);
     } catch (e: any) {
       message.error(e.message || "导入失败");
     }
@@ -560,13 +595,19 @@ export default function Dashboard() {
     setImportCode("");
   };
 
+  const handleRemove = async (code: string) => {
+    try {
+      await api.removeUserStock(code);
+      message.success(`已移除 ${code}`);
+      await loadDashboard(years);
+    } catch (e: any) {
+      message.error(e.message || "移除失败");
+    }
+  };
+
+  // 首次加载 + 年份切换
   useEffect(() => {
-    setLoading(true);
-    api.getDashboard(years).then((res) => {
-      setData(res.prices);
-      setFinRecordMap(res.financialRecords);
-      setLoading(false);
-    });
+    loadDashboard(years);
   }, [years]);
 
   const openFinancial = (stock: LatestPrice) => {
@@ -759,6 +800,23 @@ export default function Dashboard() {
           "--"
         ),
     },
+    {
+      title: "操作",
+      key: "action",
+      width: 60,
+      render: (_: any, r: LatestPrice) => (
+        <Popconfirm
+          title={`确认移除 ${r.name || r.code}？`}
+          onConfirm={() => handleRemove(r.code)}
+          okText="确认"
+          cancelText="取消"
+        >
+          <Button type="link" danger size="small">
+            删
+          </Button>
+        </Popconfirm>
+      ),
+    },
   ];
 
   return (
@@ -793,14 +851,35 @@ export default function Dashboard() {
             flexWrap: "wrap",
           }}
         >
-          <Input
-            style={{ width: 160 }}
-            placeholder="输入6位股票代码"
+          <AutoComplete
+            style={{ width: 220 }}
+            options={autoCompleteOptions}
             value={importCode}
-            onChange={(e) => setImportCode(e.target.value)}
-            onPressEnter={handleImport}
-            maxLength={6}
-          />
+            onChange={(val) => setImportCode(val)}
+            onSelect={(val) => {
+              setImportCode(val);
+              // 选择后自动触发导入
+              setImporting(true);
+              api
+                .importStock(val)
+                .then((res) => {
+                  message.success(res.message);
+                  return loadDashboard(years);
+                })
+                .catch((e) => message.error(e.message || "导入失败"))
+                .finally(() => {
+                  setImporting(false);
+                  setImportCode("");
+                });
+            }}
+            placeholder="输入代码/名称搜索..."
+          >
+            <Input
+              placeholder="输入代码/名称搜索..."
+              onPressEnter={handleImport}
+              maxLength={10}
+            />
+          </AutoComplete>
           <Button type="primary" onClick={handleImport} loading={importing}>
             {importing ? "导入中..." : "导入股票"}
           </Button>
