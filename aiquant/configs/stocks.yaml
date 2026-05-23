@@ -1,0 +1,19 @@
+stocks:
+  - code: "000001" # 平安银行
+    name: "平安银行"
+    buy_below: 10.5 # 股价低于10.5元时提示买入
+  - code: "000651" # 格力电器
+    name: "格力电器"
+    buy_below: 38.0
+  - code: "600036" # 招商银行
+    name: "招商银行"
+    buy_below: 30.0
+  - code: "600690" # 海尔智家
+    name: "海尔智家"
+    buy_below: 20.0
+  - code: "600887" # 伊利股份
+    name: "伊利股份"
+    buy_below: 25.0
+  - code: "600519" # 贵州茅台
+    name: "贵州茅台"
+    buy_below: 1400.0

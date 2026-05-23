@@ -1,0 +1,67 @@
+[project]
+name = "aiquant"
+version = "0.1.0"
+description = "AI-powered quantitative stock analysis system"
+readme = "README.md"
+requires-python = ">=3.10"
+# Dependencies for the main application
+dependencies = [
+    "apscheduler>=3.11.2",
+    "httpx>=0.28.1",
+    "sqlalchemy>=2.0.0",
+    "psycopg2-binary>=2.9.0",
+    "pydantic>=2.0.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.32.0",
+    "python-dotenv>=1.0.0",
+    "akshare>=1.18.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "matplotlib>=3.7.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# Development dependencies
+dev = [
+    "pytest>=8.4.2",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.15.13",
+    "ty>=0.0.38",
+    "websockets>=15.0.1",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project.urls]
+Homepage = "https://github.com/yourusername/aiquant"
+Repository = "https://github.com/yourusername/aiquant"
+
+[tool.setuptools]
+packages = ["aiquant"]
+package-dir = {"" = "src"}
+
+[tool.ruff]
+# Ruff configuration
+select = ["E", "F", "I", "B", "C4", "SIM"]
+ignore = ["E501"]
+line-length = 88
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = ["-v", "--tb=short"]
+
+[tool.black]
+line-length = 88
+skip-string-normalization = true
+
+[tool.mypy]
+files = ["src/aiquant"]
+warn_return_any = true
+warn_unused_configs = true
+

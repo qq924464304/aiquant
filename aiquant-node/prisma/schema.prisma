@@ -1,0 +1,93 @@
+// Prisma Schema - 与 Python SQLAlchemy 模型保持一致
+// Python 和 Node.js 共用同一个 PostgreSQL 数据库
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model PriceRecord {
+  id         Int      @id @default(autoincrement())
+  code       String   @db.VarChar(10)
+  name       String?  @db.VarChar(50)
+  price      Float
+  peTtm      Float?   @map("pe_ttm")
+  pbMrq      Float?   @map("pb_mrq")
+  recordedAt DateTime @default(now()) @map("recorded_at")
+
+  @@index([code])
+  @@index([recordedAt])
+  @@map("price_records")
+}
+
+model AlertRecord {
+  id           Int      @id @default(autoincrement())
+  code         String   @db.VarChar(10)
+  name         String?  @db.VarChar(50)
+  currentPrice Float    @map("current_price")
+  triggerPrice Float    @map("trigger_price")
+  message      String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([code])
+  @@index([createdAt])
+  @@map("alert_records")
+}
+
+model EtfIndex {
+  id           Int      @id @default(autoincrement())
+  tsCode       String   @unique @map("ts_code") @db.VarChar(20)
+  indxName     String?  @map("indx_name") @db.VarChar(100)
+  indxCsname   String?  @map("indx_csname") @db.VarChar(50)
+  pubPartyName String?  @map("pub_party_name") @db.VarChar(100)
+  pubDate      String?  @map("pub_date") @db.VarChar(20)
+  baseDate     String?  @map("base_date") @db.VarChar(20)
+  bp           Float?   @map("bp")
+  adjCircle    String?  @map("adj_circle") @db.VarChar(50)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("etf_indices")
+}
+
+model FinancialRecord {
+  id      Int    @id @default(autoincrement())
+  code    String @db.VarChar(10)
+  year    Int
+  quarter Int
+
+  // 利润表
+  roeAvg    Float? @map("roe_avg")
+  npMargin  Float? @map("np_margin")
+  gpMargin  Float? @map("gp_margin")
+  netProfit Float? @map("net_profit")
+  epsTtm    Float? @map("eps_ttm")
+  mbRevenue Float? @map("mb_revenue")
+
+  // 成长能力
+  yoyEquity   Float? @map("yoy_equity")
+  yoyAsset    Float? @map("yoy_asset")
+  yoyNi       Float? @map("yoy_ni")
+  yoyEpsBasic Float? @map("yoy_eps_basic")
+  yoyPni      Float? @map("yoy_pni")
+
+  // 资产负债表
+  currentRatio  Float? @map("current_ratio")
+  quickRatio    Float? @map("quick_ratio")
+  cashRatio     Float? @map("cash_ratio")
+  assetToEquity Float? @map("asset_to_equity")
+
+  // 现金流量表
+  cfoToOr        Float? @map("cfo_to_or")
+  cfoToNp        Float? @map("cfo_to_np")
+  ebitToInterest Float? @map("ebit_to_interest")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([code, year, quarter])
+  @@index([code])
+  @@map("financial_records")
+}

@@ -1,0 +1,15 @@
+# 应用配置
+app:
+  name: "aiquant"
+  version: "0.1.0"
+
+monitor:
+  interval_minutes: 5
+  skip_non_trading_hours: true
+
+logging:
+  level: "INFO"
+  log_to_file: true
+
+database:
+  url: "${DATABASE_URL}"
