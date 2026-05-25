@@ -29,7 +29,13 @@ import {
   ReferenceLine,
 } from "recharts";
 import { api } from "../services/api";
-import type { PricePoint, PriceSeries } from "../services/api";
+import type {
+  BacktestResult,
+  TradeRecord,
+  NavPoint,
+  PricePoint,
+  PriceSeries,
+} from "../services/api";
 
 const { RangePicker } = DatePicker;
 
@@ -42,13 +48,7 @@ interface BacktestParams {
   initialCapital: number; // 初始资金
 }
 
-// 以下从 api.ts 复用，避免重复定义
-// TradeRecord / NavPoint / BacktestResult / PricePoint / PriceSeries 已从 api.ts 导入
-
-type TradeRecord = import("../services/api").TradeRecord;
-type NavPoint = import("../services/api").NavPoint;
-type BacktestResult = import("../services/api").BacktestResult;
-
+// TradeSummary 不在 api.ts 导出，本地定义
 interface TradeSummary {
   stockCode: string;
   stockName: string;
@@ -525,8 +525,10 @@ export default function Backtest() {
                         tickFormatter={(v: number) => `¥${v.toFixed(0)}`}
                       />
                       <Tooltip
-                        formatter={(value: number, name: string) => [
-                          `¥${value.toFixed(2)}`,
+                        formatter={(value: unknown, name: string) => [
+                          typeof value === "number"
+                            ? `¥${value.toFixed(2)}`
+                            : String(value),
                           name === "price" ? "价格" : name,
                         ]}
                       />
