@@ -2,11 +2,10 @@ import { useEffect, useState, useMemo } from "react";
 import { Card, Select, Spin, Progress, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { api } from "../services/api";
-import type { PriceRecord, StockInfo } from "../services/api";
+import type { PriceRecord } from "../services/api";
+import StockSelect from "../components/StockSelect";
 
 export default function Analysis() {
-  const [stocks, setStocks] = useState<StockInfo[]>([]);
-
   // 月度综合分析 - 独立数据
   const [monthCode, setMonthCode] = useState<string>();
   const [monthRecords, setMonthRecords] = useState<PriceRecord[]>([]);
@@ -19,17 +18,6 @@ export default function Analysis() {
   const [yearRecords, setYearRecords] = useState<PriceRecord[]>([]);
   const [yearLoading, setYearLoading] = useState(false);
   const [selectedYears, setSelectedYears] = useState<string[]>([]);
-
-  // 加载股票列表
-  useEffect(() => {
-    api.getStocks().then((res) => {
-      setStocks(res);
-      if (res.length > 0) {
-        if (!monthCode) setMonthCode(res[0].code);
-        if (!yearCode) setYearCode(res[0].code);
-      }
-    });
-  }, []);
 
   // 月度综合分析 - 独立拉取
   useEffect(() => {
@@ -120,23 +108,16 @@ export default function Analysis() {
     });
   }, [yearRecords, selectedYears]);
 
-  const stockSelectOpts = stocks.map((s) => ({
-    label: `${s.code} ${s.name}`,
-    value: s.code,
-  }));
-
   return (
     <div>
       <Card
         title="📅 月度综合分析"
         style={{ marginBottom: 24, borderRadius: 8 }}
       >
-        <Select
-          style={{ width: 240, marginBottom: 16, marginRight: 12 }}
-          placeholder="选择股票"
+        <StockSelect
           value={monthCode}
           onChange={setMonthCode}
-          options={stockSelectOpts}
+          style={{ width: 240, marginBottom: 16, marginRight: 12 }}
         />
         <Select
           mode="multiple"
@@ -161,12 +142,10 @@ export default function Analysis() {
       </Card>
 
       <Card title="📅 年度综合分析" style={{ borderRadius: 8 }}>
-        <Select
-          style={{ width: 240, marginBottom: 16, marginRight: 12 }}
-          placeholder="选择股票"
+        <StockSelect
           value={yearCode}
           onChange={setYearCode}
-          options={stockSelectOpts}
+          style={{ width: 240, marginBottom: 16, marginRight: 12 }}
         />
         <Select
           mode="multiple"
