@@ -10,8 +10,6 @@ import {
   Switch,
   Select,
   Progress,
-  Input,
-  AutoComplete,
   message,
   Popconfirm,
 } from "antd";
@@ -28,7 +26,8 @@ import {
   Legend,
 } from "recharts";
 import { api } from "../services/api";
-import type { LatestPrice, FinancialRecord, StockInfo } from "../services/api";
+import type { LatestPrice, FinancialRecord } from "../services/api";
+import StockSelect from "../components/StockSelect";
 
 function FinancialDrawer({ records }: { records: FinancialRecord[] }) {
   /**
@@ -534,11 +533,7 @@ export default function Dashboard() {
   const [finRecords, setFinRecords] = useState<FinancialRecord[]>([]);
 
   // 导入股票相关状态
-  const [importCode, setImportCode] = useState("");
   const [importing, setImporting] = useState(false);
-  const [allStocks, setAllStocks] = useState<StockInfo[]>([]); // 全量股票（搜索补全用）
-  const [userStocks, setUserStocks] = useState<StockInfo[]>([]); // 个人股票列表
-
   const loadDashboard = async (yrs: number) => {
     setLoading(true);
     try {
@@ -548,51 +543,23 @@ export default function Dashboard() {
       ]);
       setData(dashData.prices);
       setFinRecordMap(dashData.financialRecords);
-      setUserStocks(uStocks);
     } catch (e) {
       console.error("加载失败", e);
     }
     setLoading(false);
   };
 
-  // 加载全量股票列表（搜索补全用）
-  useEffect(() => {
-    api
-      .getStocks()
-      .then(setAllStocks)
-      .catch(() => {});
-  }, []);
-
-  // 搜索补全选项
-  const autoCompleteOptions = useMemo(() => {
-    const q = importCode.trim().toLowerCase();
-    if (!q || q.length < 1) return [];
-    return allStocks
-      .filter((s) => s.code.startsWith(q) || (s.name && s.name.includes(q)))
-      .slice(0, 20)
-      .map((s) => ({
-        value: s.code,
-        label: `${s.code} ${s.name || ""}`,
-      }));
-  }, [importCode, allStocks]);
-
-  const handleImport = async () => {
-    const targetCode = importCode.trim();
-    if (!/^\d{6}$/.test(targetCode)) {
-      message.warning("请输入6位股票代码");
-      return;
-    }
+  const handleImportSelect = async (code: string) => {
+    if (!code) return;
     setImporting(true);
     try {
-      const res = await api.importStock(targetCode);
+      const res = await api.importStock(code);
       message.success(res.message);
-      // 刷新数据
       await loadDashboard(years);
     } catch (e: any) {
       message.error(e.message || "导入失败");
     }
     setImporting(false);
-    setImportCode("");
   };
 
   const handleRemove = async (code: string) => {
@@ -851,38 +818,13 @@ export default function Dashboard() {
             flexWrap: "wrap",
           }}
         >
-          <AutoComplete
-            style={{ width: 220 }}
-            options={autoCompleteOptions}
-            value={importCode}
-            onChange={(val) => setImportCode(val)}
-            onSelect={(val) => {
-              setImportCode(val);
-              // 选择后自动触发导入
-              setImporting(true);
-              api
-                .importStock(val)
-                .then((res) => {
-                  message.success(res.message);
-                  return loadDashboard(years);
-                })
-                .catch((e) => message.error(e.message || "导入失败"))
-                .finally(() => {
-                  setImporting(false);
-                  setImportCode("");
-                });
-            }}
-            placeholder="输入代码/名称搜索..."
-          >
-            <Input
-              placeholder="输入代码/名称搜索..."
-              onPressEnter={handleImport}
-              maxLength={10}
-            />
-          </AutoComplete>
-          <Button type="primary" onClick={handleImport} loading={importing}>
-            {importing ? "导入中..." : "导入股票"}
-          </Button>
+          <StockSelect
+            placeholder="输入代码/名称搜索并导入..."
+            onChange={handleImportSelect}
+            style={{ width: 240 }}
+            allowClear
+          />
+          {importing && <Spin size="small" style={{ marginLeft: 8 }} />}
         </div>
         <div style={{ marginBottom: 8, color: "#999", fontSize: 12 }}>
           💡 加仓参考价 = 近{years}年价格10%分位数（价格低于此位置时适合买入）

@@ -57,10 +57,10 @@ export default function StockSelect({
       style={style}
       allowClear={allowClear}
       loading={loading}
-      filterOption={(input, option) =>
-        (option?.label as string)?.toLowerCase().includes(input.toLowerCase()) ??
-        true
-      }
+      filterOption={(input, option) => {
+        const label = (option?.label as string) || "";
+        return label.toLowerCase().includes(input.toLowerCase());
+      }}
       options={options}
     />
   );
