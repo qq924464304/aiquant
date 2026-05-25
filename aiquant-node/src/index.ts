@@ -509,9 +509,9 @@ async function runPercentileStrategy(
     return lo;
   }
 
-  // ⭐️ 核心改动：共享资金池，4份×25万，循环建仓
-  const maxPositions = 4;
-  const positionSize = initialCapital / maxPositions; // 25万
+  // ⭐️ 核心改动：共享资金池，根据股票数动态分配仓位数（每只最多1份，不超过4份）
+  const maxPositions = Math.min(codes.length, 4);
+  const positionSize = initialCapital / maxPositions;
   let cash = initialCapital;
   let activeCount = 0;
 

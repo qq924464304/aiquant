@@ -106,7 +106,7 @@ export default function Backtest() {
     api.getStocks().then((list) => {
       setStocks(list);
       setLoadingStocks(false);
-      setSelectedCodes(list.slice(0, 4).map((s) => s.code));
+      setSelectedCodes(list.slice(0, 1).map((s) => s.code));
     });
   }, []);
 
@@ -243,7 +243,7 @@ export default function Backtest() {
               style={{ width: "100%" }}
               placeholder={["开始日期", "结束日期"]}
               picker="month"
-              // defaultValue={[dayjs("2020-01-01"), dayjs("2026-05-23")]}
+              defaultValue={[dayjs("2020-01"), dayjs("2026-05")]}
               onChange={(_, dateStrings) => {
                 if (dateStrings[0] && dateStrings[1]) {
                   setDateRange([dateStrings[0], dateStrings[1]]);
@@ -290,8 +290,10 @@ export default function Backtest() {
               onChange={(v) => setParams({ ...params, lookbackYears: v })}
               style={{ width: "100%" }}
               options={[
+                { label: "1年", value: 1 },
                 { label: "3年", value: 3 },
                 { label: "5年", value: 5 },
+                { label: "8年", value: 8 },
                 { label: "10年", value: 10 },
               ]}
             />
