@@ -19,6 +19,8 @@ import {
 import {
   LineChart,
   Line,
+  ComposedChart,
+  Scatter,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -27,6 +29,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import { api } from "../services/api";
+import type { PricePoint, PriceSeries } from "../services/api";
 
 const { RangePicker } = DatePicker;
 
@@ -39,37 +42,12 @@ interface BacktestParams {
   initialCapital: number; // 初始资金
 }
 
-interface TradeRecord {
-  date: string;
-  action: "buy" | "sell";
-  stockCode: string;
-  stockName: string;
-  price: number;
-  shares: number;
-  amount: number;
-  pnl?: number;
-}
+// 以下从 api.ts 复用，避免重复定义
+// TradeRecord / NavPoint / BacktestResult / PricePoint / PriceSeries 已从 api.ts 导入
 
-interface NavPoint {
-  date: string;
-  value: number;
-}
-
-interface BacktestResult {
-  strategy: string;
-  initialCapital: number;
-  finalCapital: number;
-  totalReturn: number;
-  annualizedReturn: number;
-  maxDrawdown: number;
-  annualizedVolatility: number;
-  sharpeRatio: number;
-  totalTrades: number;
-  winRate: number | null;
-  navCurve: NavPoint[];
-  trades: TradeRecord[];
-  tradeSummary: TradeSummary[];
-}
+type TradeRecord = import("../services/api").TradeRecord;
+type NavPoint = import("../services/api").NavPoint;
+type BacktestResult = import("../services/api").BacktestResult;
 
 interface TradeSummary {
   stockCode: string;
@@ -264,7 +242,8 @@ export default function Backtest() {
             <RangePicker
               style={{ width: "100%" }}
               placeholder={["开始日期", "结束日期"]}
-              defaultValue={[dayjs("2020-01-01"), dayjs("2026-05-23")]}
+              picker="month"
+              // defaultValue={[dayjs("2020-01-01"), dayjs("2026-05-23")]}
               onChange={(_, dateStrings) => {
                 if (dateStrings[0] && dateStrings[1]) {
                   setDateRange([dateStrings[0], dateStrings[1]]);
@@ -514,6 +493,88 @@ export default function Backtest() {
               <Empty description="无净值数据" />
             )}
           </Card>
+
+          {/* 个股行情图（嵌入买卖标记） */}
+          {result.priceSeries &&
+            Object.entries(result.priceSeries).map(([code, series]) => {
+              const buyData = series.buySignals.map((p: PricePoint) => ({
+                date: p.date,
+                price: p.price,
+              }));
+              const sellData = series.sellSignals.map((p: PricePoint) => ({
+                date: p.date,
+                price: p.price,
+              }));
+              return (
+                <Card
+                  key={code}
+                  title={`📈 ${series.name} (${code}) 行情与买卖点`}
+                  style={{ borderRadius: 8, marginBottom: 16 }}
+                >
+                  <ResponsiveContainer width="100%" height={300}>
+                    <ComposedChart data={series.data}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="date"
+                        fontSize={11}
+                        tickFormatter={(v: string) => v.slice(2)}
+                      />
+                      <YAxis
+                        domain={["auto", "auto"]}
+                        fontSize={12}
+                        tickFormatter={(v: number) => `¥${v.toFixed(0)}`}
+                      />
+                      <Tooltip
+                        formatter={(value: number, name: string) => [
+                          `¥${value.toFixed(2)}`,
+                          name === "price" ? "价格" : name,
+                        ]}
+                      />
+                      {/* 价格走势线 */}
+                      <Line
+                        type="monotone"
+                        dataKey="price"
+                        stroke="#1890ff"
+                        strokeWidth={1.5}
+                        dot={false}
+                        name="价格"
+                      />
+                      {/* 买入标记 */}
+                      {buyData.length > 0 && (
+                        <Scatter
+                          data={buyData}
+                          dataKey="price"
+                          fill="#52c41a"
+                          shape="triangle"
+                          name={`买入 (${buyData.length}次)`}
+                        />
+                      )}
+                      {/* 卖出标记 */}
+                      {sellData.length > 0 && (
+                        <Scatter
+                          data={sellData}
+                          dataKey="price"
+                          fill="#ff4d4f"
+                          shape="triangle"
+                          name={`卖出 (${sellData.length}次)`}
+                        />
+                      )}
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                  {buyData.length === 0 && sellData.length === 0 && (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        color: "#999",
+                        padding: 16,
+                      }}
+                    >
+                      策略期间未触发任何买卖信号
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
 
           {/* 配对交易摘要 */}
           <Card

@@ -118,6 +118,18 @@ export interface NavPoint {
   value: number;
 }
 
+export interface PricePoint {
+  date: string;
+  price: number;
+}
+
+export interface PriceSeries {
+  name: string;
+  data: PricePoint[];
+  buySignals: PricePoint[];
+  sellSignals: PricePoint[];
+}
+
 export interface BacktestResult {
   strategy: string;
   initialCapital: number;
@@ -144,6 +156,7 @@ export interface BacktestResult {
     profitPercent: number;
     status: "holding" | "closed";
   }[];
+  priceSeries: Record<string, PriceSeries>;
 }
 
 export const api = {

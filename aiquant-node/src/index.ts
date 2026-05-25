@@ -408,6 +408,18 @@ interface NavPoint {
   value: number;
 }
 
+interface PricePoint {
+  date: string;
+  price: number;
+}
+
+interface PriceSeries {
+  name: string;
+  data: PricePoint[]; // 策略期间的日/月价格序列
+  buySignals: PricePoint[]; // 买入点
+  sellSignals: PricePoint[]; // 卖出点
+}
+
 interface BacktestResult {
   strategy: string;
   initialCapital: number;
@@ -421,7 +433,8 @@ interface BacktestResult {
   winRate: number | null;
   navCurve: NavPoint[];
   trades: TradeRecord[];
-  tradeSummary: TradeSummary[]; // 新增：配对后的交易摘要
+  tradeSummary: TradeSummary[];
+  priceSeries: Record<string, PriceSeries>; // 每只股票的价格序列（含买卖标记）
 }
 
 /** 策略1: 循环建仓 — 共享资金池，每份固定25万，卖出后资金可再买入 */
@@ -724,6 +737,28 @@ async function runPercentileStrategy(
         )
       : null;
 
+  // ── 股票价格序列（用于前端行情图）──
+  const priceSeries: Record<string, PriceSeries> = {};
+  for (const code of codes) {
+    const data: PricePoint[] = [];
+    for (const ds of tradingDays) {
+      const idx = dateIdx[code][ds];
+      if (idx !== undefined) {
+        data.push({
+          date: ds,
+          price: parseFloat(stockPrices[code][idx].toFixed(2)),
+        });
+      }
+    }
+    const buySignals = trades
+      .filter((t) => t.stockCode === code && t.action === "buy")
+      .map((t) => ({ date: t.date, price: t.price }));
+    const sellSignals = trades
+      .filter((t) => t.stockCode === code && t.action === "sell")
+      .map((t) => ({ date: t.date, price: t.price }));
+    priceSeries[code] = { name: nameMap[code], data, buySignals, sellSignals };
+  }
+
   return {
     strategy: req.strategy,
     initialCapital,
@@ -738,6 +773,7 @@ async function runPercentileStrategy(
     navCurve,
     trades,
     tradeSummary,
+    priceSeries,
   };
 }
 
@@ -1072,6 +1108,28 @@ async function runPePercentileStrategy(
         )
       : null;
 
+  // ── 股票价格序列（用于前端行情图）──
+  const priceSeries: Record<string, PriceSeries> = {};
+  for (const code of codes) {
+    const data: PricePoint[] = [];
+    for (const ds of allTradingDays) {
+      const idx = dateIdx[code][ds];
+      if (idx !== undefined) {
+        data.push({
+          date: ds,
+          price: parseFloat(stockPrices[code][idx].toFixed(2)),
+        });
+      }
+    }
+    const buySignals = trades
+      .filter((t) => t.stockCode === code && t.action === "buy")
+      .map((t) => ({ date: t.date, price: t.price }));
+    const sellSignals = trades
+      .filter((t) => t.stockCode === code && t.action === "sell")
+      .map((t) => ({ date: t.date, price: t.price }));
+    priceSeries[code] = { name: nameMap[code], data, buySignals, sellSignals };
+  }
+
   return {
     strategy: req.strategy,
     initialCapital,
@@ -1086,6 +1144,7 @@ async function runPePercentileStrategy(
     navCurve,
     trades,
     tradeSummary,
+    priceSeries,
   };
 }
 
